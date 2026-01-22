@@ -1,0 +1,69 @@
+[
+  {
+    "id": "soma-groove-salad",
+    "name": "SomaFM Groove Salad",
+    "country": "USA",
+    "tags": ["ambient", "chill", "electronic"],
+    "url": "https://ice1.somafm.com/groovesalad-128-mp3",
+    "codec": "MP3",
+    "metadataUrl": "https://somafm.com/groovesalad.json"
+  },
+  {
+    "id": "soma-defcon",
+    "name": "SomaFM DEF CON Radio",
+    "country": "USA",
+    "tags": ["electronic", "industrial"],
+    "url": "https://ice1.somafm.com/defcon-128-mp3",
+    "codec": "MP3",
+    "metadataUrl": "https://somafm.com/defcon.json"
+  },
+  {
+    "id": "soma-u80s",
+    "name": "SomaFM Underground 80s",
+    "country": "USA",
+    "tags": ["80s", "new wave"],
+    "url": "https://ice1.somafm.com/u80s-128-mp3",
+    "codec": "MP3",
+    "metadataUrl": "https://somafm.com/u80s.json"
+  },
+  {
+    "id": "radio-paradise",
+    "name": "Radio Paradise",
+    "country": "USA",
+    "tags": ["eclectic", "rock"],
+    "url": "https://stream.radioparadise.com/mp3-192",
+    "codec": "MP3"
+  },
+  {
+    "id": "fip",
+    "name": "FIP",
+    "country": "France",
+    "tags": ["eclectic", "world"],
+    "url": "https://icecast.radiofrance.fr/fip-hifi.aac",
+    "codec": "AAC"
+  },
+  {
+    "id": "qmusic-nl",
+    "name": "Qmusic NL",
+    "country": "Netherlands",
+    "tags": ["pop", "hits"],
+    "url": "https://icecast.qmusic.nl/qmusic_aac",
+    "codec": "AAC"
+  },
+  {
+    "id": "radio1-nl",
+    "name": "NPO Radio 1",
+    "country": "Netherlands",
+    "tags": ["news", "talk"],
+    "url": "https://icecast.omroep.nl/radio1-bb-mp3",
+    "codec": "MP3"
+  },
+  {
+    "id": "kexp",
+    "name": "KEXP 90.3 FM",
+    "country": "USA",
+    "tags": ["alternative", "live"],
+    "url": "https://kexp-mp3-128.streamguys1.com/kexp128.mp3",
+    "codec": "MP3"
+  }
+]
