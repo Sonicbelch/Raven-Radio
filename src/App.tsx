@@ -159,6 +159,20 @@ const isBlockedMetadataUrl = (url: string) => {
   }
 };
 
+const shouldUseMetadataProxy = () => {
+  return import.meta.env.DEV || import.meta.env.VITE_METADATA_PROXY === 'true';
+};
+
+const buildMetadataRequestUrl = (metadataUrl: string) => {
+  if (!shouldUseMetadataProxy()) {
+    return metadataUrl;
+  }
+  const proxyBase = import.meta.env.VITE_METADATA_PROXY_URL || '/api/metadata';
+  const proxyUrl = new URL(proxyBase, window.location.origin);
+  proxyUrl.searchParams.set('url', metadataUrl);
+  return proxyUrl.toString();
+};
+
 function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -391,7 +405,11 @@ function App() {
 
     const loadMetadata = async () => {
       try {
-        const response = await fetch(metadataUrl);
+        const response = await fetch(buildMetadataRequestUrl(metadataUrl), {
+          headers: {
+            Accept: 'application/json'
+          }
+        });
         const data = (await response.json()) as unknown;
         const parsed = extractMetadata(data, currentStation.name);
         if (mounted) {
