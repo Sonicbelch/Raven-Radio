@@ -65,5 +65,13 @@
     "tags": ["alternative", "live"],
     "url": "https://kexp-mp3-128.streamguys1.com/kexp128.mp3",
     "codec": "MP3"
+  },
+  {
+    "id": "bbc-6-music",
+    "name": "BBC Radio 6 Music",
+    "country": "United Kingdom",
+    "tags": ["alternative", "music"],
+    "url": "https://as-hls-ww-live.akamaized.net/pool_904/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio=320000.m3u8",
+    "codec": "HLS"
   }
 ]

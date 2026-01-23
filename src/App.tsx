@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import Hls from 'hls.js';
 import stationsData from './stations.json';
 
 type Station = {
@@ -67,6 +68,28 @@ const defaultSettings: TalkKillerSettings = {
   cooldownSeconds: 12
 };
 
+const hlsMimeType = 'application/vnd.apple.mpegurl';
+
+const isHlsUrl = (url: string) => url.toLowerCase().includes('.m3u8');
+
+const describeMediaError = (error: MediaError | null) => {
+  if (!error) {
+    return 'Unknown error';
+  }
+  switch (error.code) {
+    case MediaError.MEDIA_ERR_ABORTED:
+      return 'Playback aborted';
+    case MediaError.MEDIA_ERR_NETWORK:
+      return 'Network error';
+    case MediaError.MEDIA_ERR_DECODE:
+      return 'Decode error';
+    case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+      return 'Source not supported';
+    default:
+      return `Error code ${error.code}`;
+  }
+};
+
 function useLocalStorage<T>(key: string, initialValue: T) {
   const [value, setValue] = useState<T>(() => {
     const stored = localStorage.getItem(key);
@@ -120,6 +143,7 @@ function App() {
   const speechSecondsRef = useRef<number>(0);
   const searchCacheRef = useRef<Map<string, SearchStation[]>>(new Map());
   const searchAbortRef = useRef<AbortController | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
 
   const [currentId, setCurrentId] = useState(stations[0]?.id ?? '');
   const [currentStation, setCurrentStation] = useState<PlayableStation | null>(
@@ -245,12 +269,44 @@ function App() {
     if (!audio || !currentStation) {
       return;
     }
+    const url = currentStation.url;
+    const hlsStream = isHlsUrl(url);
     audio.crossOrigin = 'anonymous';
-    audio.src = currentStation.url;
-    audio.load();
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
     setError(null);
     setAnalysisBlocked(false);
     setMetadata(null);
+    if (hlsStream) {
+      if (Hls.isSupported()) {
+        const hls = new Hls();
+        hlsRef.current = hls;
+        hls.attachMedia(audio);
+        hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+          hls.loadSource(url);
+        });
+        hls.on(Hls.Events.ERROR, (_event, data) => {
+          if (data.fatal) {
+            const reason = data.reason ? `: ${data.reason}` : '';
+            setError(
+              `Stream failed (${data.type} - ${data.details}${reason}). Try an alternate URL/server.`
+            );
+            setIsPlaying(false);
+          }
+        });
+      } else if (audio.canPlayType(hlsMimeType)) {
+        audio.src = url;
+        audio.load();
+      } else {
+        setError('HLS stream not supported. Try an alternate URL/server.');
+        setIsPlaying(false);
+      }
+    } else {
+      audio.src = url;
+      audio.load();
+    }
     if (autoPlayNext) {
       setAutoPlayNext(false);
       play();
@@ -265,7 +321,8 @@ function App() {
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     const handleError = () => {
-      setError('Stream failed to load. Try another station.');
+      const detail = describeMediaError(audio.error);
+      setError(`Stream failed (${detail}). Try an alternate URL/server.`);
       setIsPlaying(false);
     };
 
@@ -277,6 +334,15 @@ function App() {
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('error', handleError);
+    };
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (hlsRef.current) {
+        hlsRef.current.destroy();
+        hlsRef.current = null;
+      }
     };
   }, []);
 
