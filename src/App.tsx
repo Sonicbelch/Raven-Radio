@@ -133,6 +133,32 @@ function extractMetadata(data: unknown, stationName: string) {
   return `Streaming ${stationName}`;
 }
 
+const buildStationMetadata = (station: PlayableStation | null) => {
+  if (!station) {
+    return null;
+  }
+  const parts: string[] = [];
+  if (station.tags && station.tags.length > 0) {
+    parts.push(station.tags.slice(0, 4).join(', '));
+  }
+  const codecParts = [station.codec, station.bitrate ? `${station.bitrate} kbps` : null]
+    .filter(Boolean)
+    .join(' ');
+  if (codecParts) {
+    parts.push(codecParts);
+  }
+  return parts.length > 0 ? parts.join(' • ') : null;
+};
+
+const isBlockedMetadataUrl = (url: string) => {
+  try {
+    const { hostname } = new URL(url);
+    return hostname.endsWith('somafm.com');
+  } catch {
+    return true;
+  }
+};
+
 function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -355,27 +381,30 @@ function App() {
   }, [volume]);
 
   useEffect(() => {
-    if (!currentStation?.metadataUrl) {
-      setMetadata(null);
+    const fallback = buildStationMetadata(currentStation);
+    const metadataUrl = currentStation?.metadataUrl;
+    if (!metadataUrl || isBlockedMetadataUrl(metadataUrl)) {
+      setMetadata(fallback);
       return;
     }
     let mounted = true;
 
     const loadMetadata = async () => {
       try {
-        const response = await fetch(currentStation.metadataUrl!);
+        const response = await fetch(metadataUrl);
         const data = (await response.json()) as unknown;
         const parsed = extractMetadata(data, currentStation.name);
         if (mounted) {
-          setMetadata(parsed);
+          setMetadata(parsed ?? fallback);
         }
       } catch {
         if (mounted) {
-          setMetadata(null);
+          setMetadata(fallback);
         }
       }
     };
 
+    setMetadata(fallback);
     loadMetadata();
     const interval = window.setInterval(loadMetadata, 20000);
 
@@ -383,7 +412,13 @@ function App() {
       mounted = false;
       window.clearInterval(interval);
     };
-  }, [currentStation?.metadataUrl, currentStation?.name]);
+  }, [
+    currentStation?.metadataUrl,
+    currentStation?.name,
+    currentStation?.tags,
+    currentStation?.codec,
+    currentStation?.bitrate
+  ]);
 
   const getFavouriteKey = (station: { stationuuid?: string; url?: string; id?: string }) => {
     return station.stationuuid || station.url || station.id || '';
