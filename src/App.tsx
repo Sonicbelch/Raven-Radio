@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import stationsData from './stations.json';
 
 type Station = {
@@ -9,6 +9,46 @@ type Station = {
   url: string;
   codec: string;
   metadataUrl?: string;
+};
+
+type SearchStation = {
+  stationuuid?: string;
+  name: string;
+  country: string;
+  tags: string[];
+  url: string;
+  codec?: string;
+  bitrate?: number;
+};
+
+type PlayableStation = {
+  id?: string;
+  name: string;
+  country?: string;
+  tags?: string[];
+  url: string;
+  codec?: string;
+  bitrate?: number;
+  metadataUrl?: string;
+};
+
+type FavouriteStation = {
+  key: string;
+  name: string;
+  country?: string;
+  tags?: string[];
+  url: string;
+  codec?: string;
+  bitrate?: number;
+  stationuuid?: string;
+  source: 'local' | 'search';
+  localId?: string;
+};
+
+type SearchCacheEntry = {
+  key: string;
+  results: SearchStation[];
+  cachedAt: number;
 };
 
 type TalkKillerSettings = {
@@ -78,8 +118,13 @@ function App() {
   const intervalRef = useRef<number | null>(null);
   const lastSwitchRef = useRef<number>(0);
   const speechSecondsRef = useRef<number>(0);
+  const searchCacheRef = useRef<Map<string, SearchStation[]>>(new Map());
+  const searchAbortRef = useRef<AbortController | null>(null);
 
   const [currentId, setCurrentId] = useState(stations[0]?.id ?? '');
+  const [currentStation, setCurrentStation] = useState<PlayableStation | null>(
+    stations[0] ?? null
+  );
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(0.8);
   const [error, setError] = useState<string | null>(null);
@@ -87,8 +132,9 @@ function App() {
   const [analysisBlocked, setAnalysisBlocked] = useState(false);
   const [speechScore, setSpeechScore] = useState(0);
   const [speechLabel, setSpeechLabel] = useState('Music');
+  const [autoPlayNext, setAutoPlayNext] = useState(false);
 
-  const [favourites, setFavourites] = useLocalStorage<string[]>(
+  const [favourites, setFavourites] = useLocalStorage<FavouriteStation[] | string[]>(
     'raven-radio:favourites',
     []
   );
@@ -100,12 +146,75 @@ function App() {
     'raven-radio:settings',
     defaultSettings
   );
+  const [searchCache, setSearchCache] = useLocalStorage<SearchCacheEntry[]>(
+    'raven-radio:search-cache',
+    []
+  );
 
   const [query, setQuery] = useState('');
   const [countryFilter, setCountryFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
 
-  const currentStation = stations.find((station) => station.id === currentId);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCountry, setSearchCountry] = useState('');
+  const [searchTag, setSearchTag] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchStation[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+
+  const normalizedFavourites = useMemo<FavouriteStation[]>(() => {
+    if (!Array.isArray(favourites)) {
+      return [];
+    }
+    if (favourites.length === 0) {
+      return [];
+    }
+    if (typeof favourites[0] !== 'string') {
+      return favourites as FavouriteStation[];
+    }
+    return (favourites as string[])
+      .map((id) => {
+        const station = stations.find((item) => item.id === id);
+        if (!station) {
+          return null;
+        }
+        return {
+          key: station.id,
+          name: station.name,
+          country: station.country,
+          tags: station.tags,
+          url: station.url,
+          codec: station.codec,
+          source: 'local' as const,
+          localId: station.id
+        };
+      })
+      .filter((item): item is FavouriteStation => Boolean(item));
+  }, [favourites]);
+
+  useEffect(() => {
+    if (Array.isArray(favourites) && favourites.length > 0 && typeof favourites[0] === 'string') {
+      setFavourites(normalizedFavourites);
+    }
+  }, [favourites, normalizedFavourites, setFavourites]);
+
+  useEffect(() => {
+    const cacheMap = new Map<string, SearchStation[]>();
+    searchCache.forEach((entry) => {
+      cacheMap.set(entry.key, entry.results);
+    });
+    searchCacheRef.current = cacheMap;
+  }, [searchCache]);
+
+  useEffect(() => {
+    if (!currentId) {
+      return;
+    }
+    const station = stations.find((item) => item.id === currentId);
+    if (station) {
+      setCurrentStation(station);
+    }
+  }, [currentId]);
 
   const countries = useMemo(() => {
     return Array.from(new Set(stations.map((station) => station.country))).sort();
@@ -142,7 +251,11 @@ function App() {
     setError(null);
     setAnalysisBlocked(false);
     setMetadata(null);
-  }, [currentStation?.id]);
+    if (autoPlayNext) {
+      setAutoPlayNext(false);
+      play();
+    }
+  }, [currentStation?.url, autoPlayNext]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -206,10 +319,46 @@ function App() {
     };
   }, [currentStation?.metadataUrl, currentStation?.name]);
 
-  const toggleFavourite = (stationId: string) => {
-    setFavourites((prev) =>
-      prev.includes(stationId) ? prev.filter((id) => id !== stationId) : [...prev, stationId]
-    );
+  const getFavouriteKey = (station: { stationuuid?: string; url?: string; id?: string }) => {
+    return station.stationuuid || station.url || station.id || '';
+  };
+
+  const addFavourite = (station: FavouriteStation) => {
+    setFavourites((prev) => {
+      const current = Array.isArray(prev) && typeof prev[0] === 'string' ? normalizedFavourites : prev;
+      const favouritesList = current as FavouriteStation[];
+      if (favouritesList.some((item) => item.key === station.key)) {
+        return favouritesList;
+      }
+      return [station, ...favouritesList];
+    });
+  };
+
+  const removeFavourite = (key: string) => {
+    setFavourites((prev) => {
+      const current = Array.isArray(prev) && typeof prev[0] === 'string' ? normalizedFavourites : prev;
+      const favouritesList = current as FavouriteStation[];
+      return favouritesList.filter((item) => item.key !== key);
+    });
+  };
+
+  const toggleFavourite = (station: Station) => {
+    const key = station.id;
+    if (normalizedFavourites.some((item) => item.key === key)) {
+      removeFavourite(key);
+      return;
+    }
+    addFavourite({
+      key,
+      name: station.name,
+      country: station.country,
+      tags: station.tags,
+      url: station.url,
+      codec: station.codec,
+      stationuuid: station.id,
+      source: 'local',
+      localId: station.id
+    });
   };
 
   const toggleFallback = (stationId: string) => {
@@ -244,6 +393,123 @@ function App() {
     }
     return fallbacks[(currentIndex + 1) % fallbacks.length];
   };
+
+  const updateSearchCache = useCallback(
+    (key: string, results: SearchStation[]) => {
+      searchCacheRef.current.set(key, results);
+      setSearchCache((prev) => {
+        const filtered = prev.filter((entry) => entry.key !== key);
+        const next = [{ key, results, cachedAt: Date.now() }, ...filtered];
+        return next.slice(0, 20);
+      });
+    },
+    [setSearchCache]
+  );
+
+  const performSearch = useCallback(async (name: string, country: string, tag: string) => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setSearchResults([]);
+      setSearchError(null);
+      setSearchLoading(false);
+      return;
+    }
+    const key = [trimmed.toLowerCase(), country.trim().toLowerCase(), tag.trim().toLowerCase()]
+      .filter(Boolean)
+      .join('|');
+    const cached = searchCacheRef.current.get(key);
+    if (cached) {
+      setSearchResults(cached);
+      setSearchError(null);
+      setSearchLoading(false);
+      return;
+    }
+
+    searchAbortRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortRef.current = controller;
+    setSearchLoading(true);
+    setSearchError(null);
+
+    try {
+      const params = new URLSearchParams({
+        name: trimmed,
+        limit: '20'
+      });
+      if (country.trim()) {
+        params.set('country', country.trim());
+      }
+      if (tag.trim()) {
+        params.set('tag', tag.trim());
+      }
+      const response = await fetch(
+        `https://de1.api.radio-browser.info/json/stations/search?${params.toString()}`,
+        { signal: controller.signal }
+      );
+      if (!response.ok) {
+        throw new Error('Search failed');
+      }
+      const data = (await response.json()) as unknown;
+      const results = Array.isArray(data)
+        ? data
+            .map((item) => {
+              const record = item as Record<string, unknown>;
+              const nameValue = typeof record.name === 'string' ? record.name.trim() : '';
+              const urlValue =
+                typeof record.url_resolved === 'string'
+                  ? record.url_resolved
+                  : typeof record.url === 'string'
+                    ? record.url
+                    : '';
+              if (!nameValue || !urlValue) {
+                return null;
+              }
+              const tagsValue =
+                typeof record.tags === 'string'
+                  ? record.tags
+                      .split(',')
+                      .map((value) => value.trim())
+                      .filter(Boolean)
+                  : [];
+              return {
+                stationuuid:
+                  typeof record.stationuuid === 'string' ? record.stationuuid : undefined,
+                name: nameValue,
+                country: typeof record.country === 'string' ? record.country : 'Unknown',
+                tags: tagsValue,
+                url: urlValue,
+                codec: typeof record.codec === 'string' ? record.codec : undefined,
+                bitrate: typeof record.bitrate === 'number' ? record.bitrate : undefined
+              } satisfies SearchStation;
+            })
+            .filter((item): item is SearchStation => Boolean(item))
+        : [];
+      setSearchResults(results);
+      updateSearchCache(key, results);
+    } catch (err) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      console.error('Radio Browser search failed', err);
+      setSearchResults([]);
+      setSearchError(
+        'We could not reach the Radio Browser service. Please check your connection and try again.'
+      );
+    } finally {
+      if (!controller.signal.aborted) {
+        setSearchLoading(false);
+      }
+    }
+  }, [updateSearchCache]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      performSearch(searchQuery, searchCountry, searchTag);
+    }, 400);
+    return () => {
+      window.clearTimeout(timeout);
+    };
+  }, [performSearch, searchQuery, searchCountry, searchTag]);
 
   const triggerAutoSwitch = () => {
     const next = nextFallback();
@@ -355,6 +621,60 @@ function App() {
     };
   }, [settings.enabled, settings.sensitivity, settings.speechSeconds, settings.cooldownSeconds, isPlaying, currentId, fallbacks]);
 
+  const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    performSearch(searchQuery, searchCountry, searchTag);
+  };
+
+  const playSearchStation = (station: SearchStation) => {
+    const playable: PlayableStation = {
+      name: station.name,
+      country: station.country,
+      tags: station.tags,
+      url: station.url,
+      codec: station.codec,
+      bitrate: station.bitrate
+    };
+    setCurrentId('');
+    setCurrentStation(playable);
+    setAutoPlayNext(true);
+  };
+
+  const addSearchFavourite = (station: SearchStation) => {
+    const key = getFavouriteKey(station);
+    if (!key) {
+      return;
+    }
+    addFavourite({
+      key,
+      name: station.name,
+      country: station.country,
+      tags: station.tags,
+      url: station.url,
+      codec: station.codec,
+      bitrate: station.bitrate,
+      stationuuid: station.stationuuid,
+      source: 'search'
+    });
+  };
+
+  const playFavourite = (station: FavouriteStation) => {
+    if (station.localId) {
+      setCurrentId(station.localId);
+      return;
+    }
+    const playable: PlayableStation = {
+      name: station.name,
+      country: station.country,
+      tags: station.tags,
+      url: station.url,
+      codec: station.codec,
+      bitrate: station.bitrate
+    };
+    setCurrentId('');
+    setCurrentStation(playable);
+  };
+
   return (
     <div className="app">
       <header className="header">
@@ -371,6 +691,77 @@ function App() {
 
       <main className="content">
         <section className="station-browser">
+          <h2>Search stations</h2>
+          <form className="search-form" onSubmit={handleSearchSubmit}>
+            <div className="search-fields">
+              <input
+                type="search"
+                placeholder="Search stations by name"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Country (optional)"
+                value={searchCountry}
+                onChange={(event) => setSearchCountry(event.target.value)}
+              />
+              <input
+                type="text"
+                placeholder="Tag (optional)"
+                value={searchTag}
+                onChange={(event) => setSearchTag(event.target.value)}
+              />
+              <button type="submit" disabled={searchLoading}>
+                {searchLoading ? 'Searching...' : 'Search'}
+              </button>
+            </div>
+            <p className="hint">Type a name and press Enter, or wait a moment for auto-search.</p>
+          </form>
+          {searchError && <div className="error">{searchError}</div>}
+          {!searchError && searchQuery.trim() && !searchLoading && searchResults.length === 0 && (
+            <div className="empty">No stations found yet. Try adjusting your search.</div>
+          )}
+          {searchLoading && <div className="loading">Loading stations...</div>}
+          <div className="search-results">
+            {searchResults.map((station) => {
+              const isFavourite = normalizedFavourites.some(
+                (item) => item.key === getFavouriteKey(station)
+              );
+              return (
+                <div key={getFavouriteKey(station)} className="search-card">
+                  <div className="search-card__header">
+                    <div>
+                      <strong>{station.name}</strong>
+                      <div className="search-meta">
+                        <span>{station.country}</span>
+                        <span>{station.tags.length ? station.tags.join(', ') : 'No tags'}</span>
+                      </div>
+                    </div>
+                    <span className="codec">
+                      {[station.codec, station.bitrate ? `${station.bitrate} kbps` : null]
+                        .filter(Boolean)
+                        .join(' • ') || 'Codec/bitrate N/A'}
+                    </span>
+                  </div>
+                  <div className="search-actions">
+                    <button type="button" onClick={() => playSearchStation(station)}>
+                      Play
+                    </button>
+                    <button
+                      type="button"
+                      className={isFavourite ? 'secondary' : ''}
+                      onClick={() => addSearchFavourite(station)}
+                      disabled={isFavourite}
+                    >
+                      {isFavourite ? 'In favourites' : 'Add to favourites'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
           <h2>Station directory</h2>
           <div className="filters">
             <input
@@ -415,10 +806,12 @@ function App() {
                 </div>
                 <div className="station-actions">
                   <span
-                    className={`pill ${favourites.includes(station.id) ? 'active' : ''}`}
+                    className={`pill ${
+                      normalizedFavourites.some((item) => item.key === station.id) ? 'active' : ''
+                    }`}
                     onClick={(event) => {
                       event.stopPropagation();
-                      toggleFavourite(station.id);
+                      toggleFavourite(station);
                     }}
                   >
                     ★ Favourite
@@ -463,18 +856,31 @@ function App() {
             <div>
               <h3>Favourites</h3>
               <ul>
-                {favourites.length === 0 && <li className="empty">No favourites yet.</li>}
-                {favourites.map((id) => {
-                  const station = stations.find((item) => item.id === id);
-                  if (!station) return null;
-                  return (
-                    <li key={id}>
-                      <button type="button" onClick={() => setCurrentId(id)}>
-                        {station.name}
-                      </button>
-                    </li>
-                  );
-                })}
+                {normalizedFavourites.length === 0 && (
+                  <li className="empty">No favourites yet.</li>
+                )}
+                {normalizedFavourites.map((station) => (
+                  <li key={station.key} className="favourite-item">
+                    <button type="button" onClick={() => playFavourite(station)}>
+                      {station.name}
+                      {station.country && (
+                        <span className="subtle">
+                          {station.country}
+                          {station.tags && station.tags.length > 0
+                            ? ` • ${station.tags.join(', ')}`
+                            : ''}
+                        </span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={() => removeFavourite(station.key)}
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
               </ul>
             </div>
             <div>
