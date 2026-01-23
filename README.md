@@ -11,6 +11,36 @@ npm run dev
 
 The app runs at `http://127.0.0.1:5173`.
 
+### Metadata proxy (optional)
+
+The app can use a lightweight metadata proxy to avoid CORS issues with station
+metadata JSON endpoints. The proxy only handles metadata JSON (not audio
+streams).
+
+**Development**
+
+`npm run dev` now starts both Vite and a local proxy server. Vite forwards
+`/api/metadata` requests to the proxy, which listens on port `4173` by default.
+You can change the proxy port with `METADATA_PROXY_PORT=1234 npm run dev`.
+
+**Production**
+
+Set `VITE_METADATA_PROXY=true` at build time to enable proxy usage in the
+frontend.
+
+**Vercel**
+
+Deploy the repo as a Vercel project. The serverless function at
+`/api/metadata` is included in `api/metadata.js`. Once deployed, set
+`VITE_METADATA_PROXY=true` in the Vercel project environment variables.
+
+**Netlify**
+
+Deploy the repo to Netlify. The function lives in
+`netlify/functions/metadata.js`, and `netlify.toml` maps `/api/metadata` to the
+function automatically. Set `VITE_METADATA_PROXY=true` in the Netlify build
+environment.
+
 ## Features
 
 - Station directory with search/filter by name, country, and tags.
