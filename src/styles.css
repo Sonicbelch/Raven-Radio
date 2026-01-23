@@ -83,11 +83,100 @@ body {
 }
 
 .filters input,
-.filters select {
+.filters select,
+.search-fields input {
   padding: 0.6rem 0.8rem;
   border-radius: 0.5rem;
   border: 1px solid #d1d5db;
   background: #fff;
+}
+
+.search-form {
+  display: grid;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.search-fields {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.search-fields button {
+  padding: 0.6rem 1.2rem;
+  border-radius: 0.6rem;
+  border: none;
+  background: #111827;
+  color: #fff;
+  cursor: pointer;
+}
+
+.search-fields button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.hint {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
+.loading {
+  font-size: 0.9rem;
+  color: #475569;
+  margin-bottom: 0.6rem;
+}
+
+.search-results {
+  display: grid;
+  gap: 0.8rem;
+  margin-bottom: 2rem;
+}
+
+.search-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.9rem;
+  background: #fff;
+  padding: 1rem 1.1rem;
+  display: grid;
+  gap: 0.8rem;
+}
+
+.search-card__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.search-meta {
+  display: flex;
+  gap: 0.7rem;
+  color: #6b7280;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.search-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.search-actions button {
+  border: none;
+  border-radius: 0.6rem;
+  padding: 0.45rem 1rem;
+  cursor: pointer;
+  background: #111827;
+  color: #fff;
+}
+
+.search-actions button.secondary {
+  background: #e2e8f0;
+  color: #334155;
 }
 
 .station-list {
@@ -222,6 +311,30 @@ body {
   border-radius: 0.4rem;
   cursor: pointer;
   text-align: left;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.favourite-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: space-between;
+}
+
+.favourite-item .ghost {
+  border: 1px solid #d1d5db;
+  background: transparent;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.4rem;
+  font-size: 0.75rem;
+  color: #475569;
+}
+
+.subtle {
+  display: block;
+  font-size: 0.75rem;
+  color: #6b7280;
 }
 
 .empty {
@@ -307,6 +420,10 @@ body {
   }
 
   .filters {
+    grid-template-columns: 1fr;
+  }
+
+  .search-fields {
     grid-template-columns: 1fr;
   }
 }
