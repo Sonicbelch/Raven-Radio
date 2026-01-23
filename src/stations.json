@@ -5,8 +5,7 @@
     "country": "USA",
     "tags": ["ambient", "chill", "electronic"],
     "url": "https://ice1.somafm.com/groovesalad-128-mp3",
-    "codec": "MP3",
-    "metadataUrl": "https://somafm.com/groovesalad.json"
+    "codec": "MP3"
   },
   {
     "id": "soma-defcon",
@@ -14,8 +13,7 @@
     "country": "USA",
     "tags": ["electronic", "industrial"],
     "url": "https://ice1.somafm.com/defcon-128-mp3",
-    "codec": "MP3",
-    "metadataUrl": "https://somafm.com/defcon.json"
+    "codec": "MP3"
   },
   {
     "id": "soma-u80s",
@@ -23,8 +21,7 @@
     "country": "USA",
     "tags": ["80s", "new wave"],
     "url": "https://ice1.somafm.com/u80s-128-mp3",
-    "codec": "MP3",
-    "metadataUrl": "https://somafm.com/u80s.json"
+    "codec": "MP3"
   },
   {
     "id": "radio-paradise",
