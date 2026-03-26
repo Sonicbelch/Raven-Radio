@@ -5,6 +5,7 @@ export default defineConfig(() => {
   const metadataProxyPort = Number(process.env.METADATA_PROXY_PORT ?? 4173);
 
   return {
+    base: './',
     plugins: [react()],
     server: {
       host: '127.0.0.1',

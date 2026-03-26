@@ -3,10 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"vite\" \"node server/metadata-proxy.js\"",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "npm run build && electron .",
+    "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {
     "hls.js": "^1.5.17",
@@ -18,7 +21,22 @@
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "concurrently": "^9.0.1",
+    "electron": "^31.0.0",
+    "electron-builder": "^24.0.0",
     "typescript": "^5.5.4",
     "vite": "^5.4.1"
+  },
+  "build": {
+    "appId": "com.ravenradio.app",
+    "productName": "Raven Radio",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
   }
 }
