@@ -64,11 +64,43 @@
     "codec": "MP3"
   },
   {
+    "id": "bbc-radio-1",
+    "name": "BBC Radio 1",
+    "country": "United Kingdom",
+    "tags": ["pop", "dance", "hits"],
+    "url": "http://as-hls-ww-live.akamaized.net/pool_01505109/live/ww/bbc_radio_one/bbc_radio_one.isml/bbc_radio_one-audio%3d96000.norewind.m3u8",
+    "codec": "HLS"
+  },
+  {
+    "id": "bbc-radio-2",
+    "name": "BBC Radio 2",
+    "country": "United Kingdom",
+    "tags": ["pop", "rock", "classics"],
+    "url": "http://as-hls-ww-live.akamaized.net/pool_74208725/live/ww/bbc_radio_two/bbc_radio_two.isml/bbc_radio_two-audio%3d96000.norewind.m3u8",
+    "codec": "HLS"
+  },
+  {
+    "id": "bbc-radio-3",
+    "name": "BBC Radio 3",
+    "country": "United Kingdom",
+    "tags": ["classical", "jazz", "world"],
+    "url": "http://as-hls-ww-live.akamaized.net/pool_23461179/live/ww/bbc_radio_three/bbc_radio_three.isml/bbc_radio_three-audio%3d96000.norewind.m3u8",
+    "codec": "HLS"
+  },
+  {
+    "id": "bbc-radio-4",
+    "name": "BBC Radio 4",
+    "country": "United Kingdom",
+    "tags": ["news", "talk", "drama"],
+    "url": "http://as-hls-ww-live.akamaized.net/pool_55057080/live/ww/bbc_radio_fourfm/bbc_radio_fourfm.isml/bbc_radio_fourfm-audio%3d96000.norewind.m3u8",
+    "codec": "HLS"
+  },
+  {
     "id": "bbc-6-music",
     "name": "BBC Radio 6 Music",
     "country": "United Kingdom",
     "tags": ["alternative", "music"],
-    "url": "https://as-hls-ww-live.akamaized.net/pool_904/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio=320000.m3u8",
+    "url": "http://as-hls-ww-live.akamaized.net/pool_81827798/live/ww/bbc_6music/bbc_6music.isml/bbc_6music-audio%3d96000.norewind.m3u8",
     "codec": "HLS"
   }
 ]
