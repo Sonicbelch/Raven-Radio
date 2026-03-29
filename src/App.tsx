@@ -857,22 +857,6 @@ function App() {
     });
   };
 
-  const playFavourite = (station: FavouriteStation) => {
-    if (station.localId) {
-      setCurrentId(station.localId);
-      return;
-    }
-    const playable: PlayableStation = {
-      name: station.name,
-      country: station.country,
-      tags: station.tags,
-      url: station.url,
-      codec: station.codec,
-      bitrate: station.bitrate
-    };
-    setCurrentId('');
-    setCurrentStation(playable);
-  };
 
   return (
     <div className="app">
