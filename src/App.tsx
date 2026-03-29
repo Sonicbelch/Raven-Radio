@@ -237,7 +237,7 @@ function App() {
       return favourites as FavouriteStation[];
     }
     return (favourites as string[])
-      .map((id) => {
+      .map((id): FavouriteStation | null => {
         const station = stations.find((item) => item.id === id);
         if (!station) {
           return null;
@@ -253,7 +253,7 @@ function App() {
           localId: station.id
         };
       })
-      .filter((item): item is FavouriteStation => Boolean(item));
+      .filter((item): item is FavouriteStation => item !== null);
   }, [favourites]);
 
   useEffect(() => {
@@ -571,7 +571,7 @@ function App() {
       const data = (await response.json()) as unknown;
       const results = Array.isArray(data)
         ? data
-            .map((item) => {
+            .map((item): SearchStation | null => {
               const record = item as Record<string, unknown>;
               const nameValue = typeof record.name === 'string' ? record.name.trim() : '';
               const urlValue =
@@ -601,7 +601,7 @@ function App() {
                 bitrate: typeof record.bitrate === 'number' ? record.bitrate : undefined
               } satisfies SearchStation;
             })
-            .filter((item): item is SearchStation => Boolean(item))
+            .filter((item): item is SearchStation => item !== null)
         : [];
       setSearchResults(results);
       updateSearchCache(key, results);
