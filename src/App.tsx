@@ -46,6 +46,8 @@ type FavouriteStation = {
   localId?: string;
 };
 
+type PresetSlot = FavouriteStation | null;
+
 type SearchCacheEntry = {
   key: string;
   results: SearchStation[];
@@ -60,6 +62,25 @@ type TalkKillerSettings = {
 };
 
 const stations = stationsData as Station[];
+
+const PRESET_COUNT = 9;
+
+const defaultPresets: PresetSlot[] = (() => {
+  const slots: PresetSlot[] = Array(PRESET_COUNT).fill(null);
+  (stationsData as Station[]).slice(0, PRESET_COUNT).forEach((s, i) => {
+    slots[i] = {
+      key: s.id,
+      name: s.name,
+      country: s.country,
+      tags: s.tags,
+      url: s.url,
+      codec: s.codec,
+      source: 'local',
+      localId: s.id
+    };
+  });
+  return slots;
+})();
 
 const defaultSettings: TalkKillerSettings = {
   enabled: true,
@@ -214,7 +235,10 @@ function App() {
     'raven-radio:search-cache',
     []
   );
-
+  const [presets, setPresets] = useLocalStorage<PresetSlot[]>(
+    'raven-radio:presets',
+    defaultPresets
+  );
   const [query, setQuery] = useState('');
   const [countryFilter, setCountryFilter] = useState('all');
   const [tagFilter, setTagFilter] = useState('all');
@@ -491,6 +515,56 @@ function App() {
       prev.includes(stationId) ? prev.filter((id) => id !== stationId) : [...prev, stationId]
     );
   };
+
+  const setPresetSlot = (index: number, station: FavouriteStation | null) => {
+    setPresets((prev) => {
+      const next = [...(prev.length === PRESET_COUNT ? prev : defaultPresets)];
+      next[index] = station;
+      return next;
+    });
+  };
+
+  const playPreset = (station: FavouriteStation) => {
+    if (station.localId) {
+      setCurrentId(station.localId);
+      setAutoPlayNext(true);
+      return;
+    }
+    const playable: PlayableStation = {
+      name: station.name,
+      country: station.country,
+      tags: station.tags,
+      url: station.url,
+      codec: station.codec,
+      bitrate: station.bitrate
+    };
+    setCurrentId('');
+    setCurrentStation(playable);
+    setAutoPlayNext(true);
+  };
+
+  const stationToPreset = (station: Station): FavouriteStation => ({
+    key: station.id,
+    name: station.name,
+    country: station.country,
+    tags: station.tags,
+    url: station.url,
+    codec: station.codec,
+    source: 'local',
+    localId: station.id
+  });
+
+  const searchStationToPreset = (station: SearchStation): FavouriteStation => ({
+    key: getFavouriteKey(station),
+    name: station.name,
+    country: station.country,
+    tags: station.tags,
+    url: station.url,
+    codec: station.codec,
+    bitrate: station.bitrate,
+    stationuuid: station.stationuuid,
+    source: 'search'
+  });
 
   const play = async () => {
     if (!audioRef.current) {
@@ -881,6 +955,20 @@ function App() {
                     >
                       {isFavourite ? 'In favourites' : 'Add to favourites'}
                     </button>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const idx = parseInt(e.target.value, 10);
+                        if (!isNaN(idx)) setPresetSlot(idx, searchStationToPreset(station));
+                      }}
+                    >
+                      <option value="">Set as preset…</option>
+                      {Array.from({ length: PRESET_COUNT }, (_, i) => (
+                        <option key={i} value={i}>
+                          {`Slot ${i + 1}${presets[i] ? ` (${presets[i]!.name})` : ' (empty)'}`}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
               );
@@ -950,6 +1038,23 @@ function App() {
                   >
                     ↻ Fallback
                   </span>
+                  <select
+                    value=""
+                    onClick={(e) => e.stopPropagation()}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      const idx = parseInt(e.target.value, 10);
+                      if (!isNaN(idx)) setPresetSlot(idx, stationToPreset(station));
+                    }}
+                    className="preset-select"
+                  >
+                    <option value="">Set preset…</option>
+                    {Array.from({ length: PRESET_COUNT }, (_, i) => (
+                      <option key={i} value={i}>
+                        {`Slot ${i + 1}${presets[i] ? ` (${presets[i]!.name})` : ' (empty)'}`}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </button>
             ))}
@@ -979,34 +1084,44 @@ function App() {
 
           <div className="lists">
             <div>
-              <h3>Favourites</h3>
-              <ul>
-                {normalizedFavourites.length === 0 && (
-                  <li className="empty">No favourites yet.</li>
-                )}
-                {normalizedFavourites.map((station) => (
-                  <li key={station.key} className="favourite-item">
-                    <button type="button" onClick={() => playFavourite(station)}>
-                      {station.name}
-                      {station.country && (
-                        <span className="subtle">
-                          {station.country}
-                          {station.tags && station.tags.length > 0
-                            ? ` • ${station.tags.join(', ')}`
-                            : ''}
-                        </span>
+              <h3>Presets</h3>
+              <div className="presets-grid">
+                {Array.from({ length: PRESET_COUNT }, (_, i) => {
+                  const slot = presets[i] ?? null;
+                  const isActive = slot && (
+                    (slot.localId && slot.localId === currentId) ||
+                    (!slot.localId && currentStation?.url === slot.url)
+                  );
+                  return (
+                    <div key={i} className={`preset-slot${slot ? '' : ' empty'}${isActive ? ' active' : ''}`}>
+                      <span className="preset-number">{i + 1}</span>
+                      {slot ? (
+                        <>
+                          <button
+                            type="button"
+                            className="preset-name"
+                            onClick={() => playPreset(slot)}
+                            title={slot.name}
+                          >
+                            {slot.name}
+                          </button>
+                          <button
+                            type="button"
+                            className="preset-clear"
+                            onClick={() => setPresetSlot(i, null)}
+                            title="Clear slot"
+                          >
+                            ✕
+                          </button>
+                        </>
+                      ) : (
+                        <span className="preset-empty">empty</span>
                       )}
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost"
-                      onClick={() => removeFavourite(station.key)}
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="hint" style={{ marginTop: '0.5rem' }}>Use "Set preset…" on any station to assign a slot.</p>
             </div>
             <div>
               <h3>Fallback list</h3>
