@@ -349,7 +349,13 @@ function App() {
     }
     if (autoPlayNext) {
       setAutoPlayNext(false);
-      play();
+      const playWhenReady = () => {
+        audio.removeEventListener('canplay', playWhenReady);
+        audio.play().catch(() => {
+          setError('Playback blocked by the browser. Try pressing play again.');
+        });
+      };
+      audio.addEventListener('canplay', playWhenReady);
     }
   }, [currentStation?.url, autoPlayNext]);
 
