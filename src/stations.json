@@ -36,16 +36,16 @@
     "name": "FIP",
     "country": "France",
     "tags": ["eclectic", "world"],
-    "url": "https://icecast.radiofrance.fr/fip-hifi.aac",
-    "codec": "AAC"
+    "url": "https://icecast.radiofrance.fr/fip-midfi.mp3",
+    "codec": "MP3"
   },
   {
     "id": "qmusic-nl",
     "name": "Qmusic NL",
     "country": "Netherlands",
     "tags": ["pop", "hits"],
-    "url": "https://icecast.qmusic.nl/qmusic_aac",
-    "codec": "AAC"
+    "url": "https://icecast-qmusicnl-cdp.triple-it.nl/Qmusic_nl_live.mp3",
+    "codec": "MP3"
   },
   {
     "id": "radio1-nl",
