@@ -59,6 +59,7 @@ type TalkKillerSettings = {
   speechSeconds: number;
   sensitivity: number;
   cooldownSeconds: number;
+  hfPenaltyStrength: number;
 };
 
 const stations = stationsData as Station[];
@@ -85,8 +86,9 @@ const defaultPresets: PresetSlot[] = (() => {
 const defaultSettings: TalkKillerSettings = {
   enabled: true,
   speechSeconds: 6,
-  sensitivity: 0.6,
-  cooldownSeconds: 12
+  sensitivity: 0.3,
+  cooldownSeconds: 12,
+  hfPenaltyStrength: 1.5
 };
 
 const hlsMimeType = 'application/vnd.apple.mpegurl';
@@ -570,7 +572,7 @@ function App() {
       const midRatio = speechBand / total;
       // HF penalty: music has lots of high-freq energy relative to speech band; speech doesn't
       const hfRatio = speechBand > 0 ? hfBand / speechBand : 0;
-      const hfPenalty = Math.min(hfRatio * 1.5, 1);
+      const hfPenalty = Math.min(hfRatio * settings.hfPenaltyStrength, 1);
       // Final score: high if speech-band dominant AND low high-freq energy
       const score = midRatio * (1 - hfPenalty);
       setSpeechScore(score);
@@ -821,19 +823,28 @@ function App() {
             )}
             <div className="settings-grid">
               <label>
-                Speech seconds
-                <input type="number" min={2} max={20} value={settings.speechSeconds}
-                  onChange={(event) => setSettings({ ...settings, speechSeconds: Number(event.target.value) })} />
+                <span className="slider-label">Sensitivity <em>{settings.sensitivity.toFixed(2)}</em></span>
+                <input type="range" min={0.05} max={0.8} step={0.01} value={settings.sensitivity}
+                  onChange={(e) => setSettings({ ...settings, sensitivity: Number(e.target.value) })} />
+                <span className="slider-hint">Lower = triggers more easily</span>
               </label>
               <label>
-                Sensitivity (0..1)
-                <input type="number" min={0} max={1} step={0.05} value={settings.sensitivity}
-                  onChange={(event) => setSettings({ ...settings, sensitivity: Number(event.target.value) })} />
+                <span className="slider-label">Speech duration <em>{settings.speechSeconds}s</em></span>
+                <input type="range" min={2} max={20} step={1} value={settings.speechSeconds}
+                  onChange={(e) => setSettings({ ...settings, speechSeconds: Number(e.target.value) })} />
+                <span className="slider-hint">Seconds of speech before switching</span>
               </label>
               <label>
-                Cooldown seconds
-                <input type="number" min={5} max={60} value={settings.cooldownSeconds}
-                  onChange={(event) => setSettings({ ...settings, cooldownSeconds: Number(event.target.value) })} />
+                <span className="slider-label">Music filter <em>{settings.hfPenaltyStrength.toFixed(1)}×</em></span>
+                <input type="range" min={0} max={3} step={0.1} value={settings.hfPenaltyStrength}
+                  onChange={(e) => setSettings({ ...settings, hfPenaltyStrength: Number(e.target.value) })} />
+                <span className="slider-hint">Higher = less likely to mistake music for speech</span>
+              </label>
+              <label>
+                <span className="slider-label">Cooldown <em>{settings.cooldownSeconds}s</em></span>
+                <input type="range" min={5} max={60} step={1} value={settings.cooldownSeconds}
+                  onChange={(e) => setSettings({ ...settings, cooldownSeconds: Number(e.target.value) })} />
+                <span className="slider-hint">Minimum gap between switches</span>
               </label>
             </div>
             <div className="debug">
