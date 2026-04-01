@@ -514,3 +514,69 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+/* Fallback list */
+.fallback-list {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1.2rem;
+}
+.fallback-list h3 { margin: 0 0 0.8rem; }
+.fallback-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.fallback-item:last-child { border-bottom: none; }
+.fallback-play {
+  flex: 1;
+  border: none;
+  background: #f1f5f9;
+  padding: 0.35rem 0.6rem;
+  border-radius: 0.4rem;
+  cursor: pointer;
+  text-align: left;
+  font-size: 0.85rem;
+}
+.fallback-remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: #9ca3af;
+  font-size: 0.8rem;
+  padding: 0.2rem 0.3rem;
+}
+.fallback-remove:hover { color: #ef4444; }
+
+/* Station Masala */
+.masala {
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1.2rem;
+  display: grid;
+  gap: 0.8rem;
+}
+.masala-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.masala-header h3 { margin: 0; }
+.masala p { margin: 0; font-size: 0.85rem; color: #6b7280; }
+.masala-actions { display: flex; gap: 0.6rem; }
+.randomise-btn {
+  border: none;
+  border-radius: 0.6rem;
+  padding: 0.5rem 1.1rem;
+  background: #6366f1;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.randomise-btn:hover { background: #4f46e5; }
+.randomise-btn:disabled { opacity: 0.5; cursor: not-allowed; }
