@@ -194,7 +194,9 @@ function App() {
 
   const [favourites, setFavourites] = useLocalStorage<FavouriteStation[] | string[]>('raven-radio:favourites', []);
   const [fallbacks, setFallbacks] = useLocalStorage<FavouriteStation[]>('raven-radio:fallbacks', []);
-  const [settings, setSettings] = useLocalStorage<TalkKillerSettings>('raven-radio:settings', defaultSettings);
+  const [rawSettings, setSettings] = useLocalStorage<TalkKillerSettings>('raven-radio:settings', defaultSettings);
+  // Merge with defaults so new fields added later don't come back as undefined
+  const settings: TalkKillerSettings = { ...defaultSettings, ...rawSettings };
   const [searchCache, setSearchCache] = useLocalStorage<SearchCacheEntry[]>('raven-radio:search-cache', []);
   const [presets, setPresets] = useLocalStorage<PresetSlot[]>('raven-radio:presets', defaultPresets);
   const [masalaEnabled, setMasalaEnabled] = useLocalStorage<boolean>('raven-radio:masala', false);
@@ -572,7 +574,7 @@ function App() {
       const midRatio = speechBand / total;
       // HF penalty: music has lots of high-freq energy relative to speech band; speech doesn't
       const hfRatio = speechBand > 0 ? hfBand / speechBand : 0;
-      const hfPenalty = Math.min(hfRatio * settings.hfPenaltyStrength, 1);
+      const hfPenalty = Math.min(hfRatio * (settings.hfPenaltyStrength ?? 1.5), 1);
       // Final score: high if speech-band dominant AND low high-freq energy
       const score = midRatio * (1 - hfPenalty);
       setSpeechScore(score);
