@@ -86,7 +86,7 @@ const defaultPresets: PresetSlot[] = (() => {
 const defaultSettings: TalkKillerSettings = {
   enabled: true,
   speechSeconds: 6,
-  sensitivity: 0.3,
+  sensitivity: 0.25,
   cooldownSeconds: 12,
   hfPenaltyStrength: 1.5
 };
@@ -188,6 +188,8 @@ function App() {
   const [metadata, setMetadata] = useState<string | null>(null);
   const [analysisBlocked, setAnalysisBlocked] = useState(false);
   const [speechScore, setSpeechScore] = useState(0);
+  const [speechMidRatio, setSpeechMidRatio] = useState(0);
+  const [speechHfRatio, setSpeechHfRatio] = useState(0);
   const [speechLabel, setSpeechLabel] = useState('Music');
   const [autoPlayNext, setAutoPlayNext] = useState(false);
   const [masalaIndex, setMasalaIndex] = useState(0);
@@ -575,9 +577,11 @@ function App() {
       // HF penalty: music has lots of high-freq energy relative to speech band; speech doesn't
       const hfRatio = speechBand > 0 ? hfBand / speechBand : 0;
       const hfPenalty = Math.min(hfRatio * (settings.hfPenaltyStrength ?? 1.5), 1);
-      // Final score: high if speech-band dominant AND low high-freq energy
-      const score = midRatio * (1 - hfPenalty);
+      // Final score: weighted combination so high HF alone doesn't zero out the score
+      const score = midRatio * 0.6 + (1 - hfPenalty) * 0.4;
       setSpeechScore(score);
+      setSpeechMidRatio(midRatio);
+      setSpeechHfRatio(hfRatio);
       const isSpeech = score >= settings.sensitivity;
       setSpeechLabel(isSpeech ? 'Speech-ish' : 'Music');
       const step = 0.2;
@@ -593,7 +597,7 @@ function App() {
     }, 200);
     audioContext.resume().catch(() => undefined);
     return () => { if (intervalRef.current) { window.clearInterval(intervalRef.current); intervalRef.current = null; } };
-  }, [settings.enabled, settings.sensitivity, settings.speechSeconds, settings.cooldownSeconds, isPlaying, currentId, fallbacks, masalaEnabled, masalaIndex, filledPresets]);
+  }, [settings.enabled, settings.sensitivity, settings.speechSeconds, settings.cooldownSeconds, settings.hfPenaltyStrength, isPlaying, currentId, fallbacks, masalaEnabled, masalaIndex, filledPresets]);
 
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -850,8 +854,7 @@ function App() {
               </label>
             </div>
             <div className="debug">
-              <span>Speech score: {speechScore.toFixed(2)}</span>
-              <span className={speechLabel === 'Speech-ish' ? 'speech' : 'music'}>{speechLabel}</span>
+              <span>Score: {speechScore.toFixed(2)} | Mid: {speechMidRatio.toFixed(2)} | HF: {speechHfRatio.toFixed(2)} | {speechLabel}</span>
             </div>
           </div>
         </section>
