@@ -350,12 +350,7 @@ function App() {
     });
   };
 
-  const removeFavourite = (key: string) => {
-    setFavourites((prev) => {
-      const current = Array.isArray(prev) && typeof prev[0] === 'string' ? normalizedFavourites : prev;
-      return (current as FavouriteStation[]).filter((item) => item.key !== key);
-    });
-  };
+
 
   const addFallback = (station: FavouriteStation) => {
     setFallbacks((prev) => {
