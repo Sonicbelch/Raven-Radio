@@ -545,8 +545,13 @@ function App() {
     if (!analyser || !audioContext) return;
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     const nyquist = audioContext.sampleRate / 2;
-    const startIndex = Math.floor((300 / nyquist) * dataArray.length);
-    const endIndex = Math.min(dataArray.length - 1, Math.floor((3000 / nyquist) * dataArray.length));
+    const binCount = dataArray.length;
+    // Speech band: 300–3400 Hz
+    const speechStart = Math.floor((300 / nyquist) * binCount);
+    const speechEnd = Math.min(binCount - 1, Math.floor((3400 / nyquist) * binCount));
+    // High-frequency band: 4000–10000 Hz (music has lots here, speech has very little)
+    const hfStart = Math.floor((4000 / nyquist) * binCount);
+    const hfEnd = Math.min(binCount - 1, Math.floor((10000 / nyquist) * binCount));
     intervalRef.current = window.setInterval(() => {
       if (!analyserRef.current) return;
       try {
@@ -558,8 +563,16 @@ function App() {
         return;
       }
       const total = dataArray.reduce((acc, value) => acc + value, 0);
-      const mid = dataArray.slice(startIndex, endIndex).reduce((acc, value) => acc + value, 0);
-      const score = total === 0 ? 0 : mid / total;
+      if (total === 0) { setSpeechScore(0); setSpeechLabel('Music'); return; }
+      const speechBand = dataArray.slice(speechStart, speechEnd).reduce((acc, v) => acc + v, 0);
+      const hfBand = dataArray.slice(hfStart, hfEnd).reduce((acc, v) => acc + v, 0);
+      // Mid-band ratio: how much energy is in the speech band
+      const midRatio = speechBand / total;
+      // HF penalty: music has lots of high-freq energy relative to speech band; speech doesn't
+      const hfRatio = speechBand > 0 ? hfBand / speechBand : 0;
+      const hfPenalty = Math.min(hfRatio * 1.5, 1);
+      // Final score: high if speech-band dominant AND low high-freq energy
+      const score = midRatio * (1 - hfPenalty);
       setSpeechScore(score);
       const isSpeech = score >= settings.sensitivity;
       setSpeechLabel(isSpeech ? 'Speech-ish' : 'Music');
